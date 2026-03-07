@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <canvas id="render" style="width: 512px; height: 512px; image-rendering: pixelated"></canvas>
+    <p>A procedural toxic sludge texture. Created for a Minecraft mod. This is a port of a <a href="https://snap.berkeley.edu/project?username=marioood&projectname=bubbles">Snap! project.</a></p>
+  </body>
+  <script src="render-helper.js"></script>
+  <script>
+    const WIDTH = 64;
+    const HEIGHT = 64;
+    const LENGTH = WIDTH * HEIGHT;
+
+    const canvas = document.getElementById("render");
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    const ctx = canvas.getContext("2d");
+    const idata = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+    const pixels = idata.data;
+
+    let t = 0;
+
+    function initialize(delay) {
+      let handle = window.setInterval(
+        () => {
+          render();
+          t++;
+          ctx.putImageData(idata, 0, 0);
+        }, delay
+      );
+    }
+
+    ctx.putImageData(idata, 0, 0);
+
+    function plot(x, y, r, g, b, a) {
+      const i = (x + y * WIDTH) * 4;
+      pixels[i]   = r;
+      pixels[i+1] = g;
+      pixels[i+2] = b;
+      pixels[i+3] = a;
+    }
+    
+    const getRed = (x, y) => pixels[(x + y * WIDTH) * 4];
+    const getGreen = (x, y) => pixels[(x + y * WIDTH) * 4+1];
+    const getBlue = (x, y) => pixels[(x + y * WIDTH) * 4+2];
+    /******** V user stuff here V ********/
+    
+    const bubbles = [];
+    const MAX_BUBBLES = Math.ceil(WIDTH * HEIGHT / 64);
+    const bgR = 63;
+    const bgG = 15;
+    const bgB = 127;
+
+    function render() {
+      if(Math.random() < 0.125 && bubbles.length <= MAX_BUBBLES) {
+        bubbles.push(
+          {
+            x: Math.floor(rand(0, WIDTH)),
+            y: Math.floor(rand(0, HEIGHT)),
+            radius: rand(0.5, 2),
+            alpha: 0,
+            maxRadius: rand(2, 4.75),
+            radiusGrowth: rand(0.05, 0.3)
+          }
+        );
+      }
+    
+      for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+          const ts = t * 0.125;
+          let waveA = sin((ts + x + y * sin(ts)) * 23);
+          waveA += cos((ts + y + x * 2 * sin(ts)) * 23);
+          waveA /= 2;
+          waveA *= sin(x * 47) + sin(y * 47);
+          waveA *= Math.abs(cos(ts * 4)) * 0.5 + 0.5;
+          waveA = Math.abs(waveA * 0.5);
+          
+          plot(x, y, lerp(bgR, 192, waveA), lerp(bgG, 255, waveA), lerp(bgB, 63, waveA), 255);
+        }
+      }
+      
+      for(let i = 0; i < bubbles.length; i++) {
+        const curBub = bubbles[i];
+        
+        const bubX = curBub.x;
+        const bubY = curBub.y;
+        const radius = curBub.radius;
+        const bubAlpha = curBub.alpha;
+        const maxRadius = curBub.maxRadius;
+        const radiusGrowth = curBub.radiusGrowth;
+        const isDead = radius > maxRadius;
+        
+        for(let x = Math.floor(-radius); x <= radius; x++) {
+          for(let y = Math.floor(-radius); y <= radius; y++) {
+            const dist = Math.sqrt(x * x + y * y);
+            if(dist < radius) {
+              let alphaDist = 1 - (dist / radius) * (dist / radius);
+              if(isDead)
+                alphaDist = Math.abs(sin(alphaDist * 360));
+              
+              const px = mod(bubX + x, WIDTH);
+              const py = mod(bubY + y, HEIGHT);
+              const pa = alphaDist * bubAlpha * 1.75;
+              plot(
+                px,
+                py,
+                lerp(getRed(px, py), 192, pa),
+                lerp(getGreen(px, py), 255, pa),
+                lerp(getBlue(px, py), 0, pa),
+                255
+              );
+            }
+          }
+        }
+
+        if(isDead) {
+          if(bubAlpha - 0.1 < 0) {
+            bubbles.splice(i, 1);
+            i--;
+          } else {
+            curBub.radius += radiusGrowth * 2;
+            curBub.alpha -= 0.1;
+          }
+        } else {
+          curBub.radius += radiusGrowth;
+          if(curBub.alpha + 0.05 < 1)
+            curBub.alpha += 0.05;
+        }
+      }
+    }
+    //30 fps
+    initialize(1000 / 30);
+  </script>
+</html>

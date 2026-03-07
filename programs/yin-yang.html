@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <canvas id="render" style="width: 256px; height: 256px; image-rendering: pixelated; background-color: black"></canvas>
+    <p>Rotation.</p>
+  </body>
+  <script src="render-helper.js"></script>
+  <script>
+    const WIDTH = 64;
+    const HEIGHT = 64;
+    const LENGTH = WIDTH * HEIGHT;
+
+    const canvas = document.getElementById("render");
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    const ctx = canvas.getContext("2d");
+    const idata = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+    const pixels = idata.data;
+
+    let t = 0;
+
+    function initialize(delay) {
+      let handle = window.setInterval(
+        () => {
+          render();
+          t++;
+          ctx.putImageData(idata, 0, 0);
+        }, delay
+      );
+    }
+
+    ctx.putImageData(idata, 0, 0);
+
+    function plot(x, y, r, g, b, a) {
+      const i = (x + y * WIDTH) * 4;
+      pixels[i]   = r;
+      pixels[i+1] = g;
+      pixels[i+2] = b;
+      pixels[i+3] = a;
+    }
+    const getRed = (x, y) => pixels[(x + y * WIDTH) * 4];
+    const getGreen = (x, y) => pixels[(x + y * WIDTH) * 4+1];
+    const getBlue = (x, y) => pixels[(x + y * WIDTH) * 4+2];
+    /******** V user stuff here V ********/
+    function render() {
+      for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+          const i = x + y * WIDTH;
+          let xN = (x / (WIDTH - 1) - 0.5) * 2;
+          let yN = (y / (HEIGHT - 1) - 0.5) * 2;
+          const r = Math.sqrt(xN * xN + yN * yN);
+          //V the problem
+          let theta = Math.atan2(xN, yN);
+          theta += t * 0.01 * Math.PI;
+          xN = Math.sin(theta) * r;
+          yN = Math.cos(theta) * r;
+          //let pattern = mod(Math.floor(xN * 4 + Math.floor(yN * 4)), 2);
+          
+          const bigCircleDist = Math.sqrt(xN * xN + yN * yN);
+          let pattern = bigCircleDist > 1 ? 0.5 : 0;
+          if(Math.sin(yN * Math.PI) + xN * 2.5 > 0 && bigCircleDist < 1) {
+            pattern = 1;
+          }
+          const topCircleDist = Math.sqrt(xN * xN + (yN + 0.5) * (yN + 0.5));
+          const bottomCircleDist = Math.sqrt(xN * xN + (yN - 0.5) * (yN - 0.5));
+          const lilRadius = 1 / 6;
+          if(bottomCircleDist < lilRadius) {
+            pattern = 0;
+          }
+          if(topCircleDist < lilRadius) {
+            pattern = 1;
+          }
+          const col = pattern * 255;
+          plot(x, y, col, col, col, 255);
+        }
+      }
+    }
+    //30 fps
+    initialize(1000 / 30);
+  </script>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <canvas id="render" style="width: 1024px; height: 384px; image-rendering: pixelated; background-color: black"></canvas>
+    <p>Cellular automaton.</p>
+  </body>
+  <script src="render-helper.js"></script>
+  <script>
+    const WIDTH = 128;
+    const HEIGHT = 48;
+    const LENGTH = WIDTH * HEIGHT;
+
+    const canvas = document.getElementById("render");
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    const ctx = canvas.getContext("2d");
+    const idata = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+    const pixels = idata.data;
+
+    let t = 0;
+
+    function initialize(delay) {
+      let handle = window.setInterval(
+        () => {
+          render();
+          t++;
+          ctx.putImageData(idata, 0, 0);
+        }, delay
+      );
+    }
+
+    ctx.putImageData(idata, 0, 0);
+
+    function plot(x, y, r, g, b, a) {
+      const i = (x + y * WIDTH) * 4;
+      pixels[i]   = r;
+      pixels[i+1] = g;
+      pixels[i+2] = b;
+      pixels[i+3] = a;
+    }
+    /******** V user stuff here V ********/
+
+    const cells1 = new Array(LENGTH).fill(0);
+    const cells2 = new Array(LENGTH);
+    let cellsIn = cells1;
+    let cellsOut = cells2;
+
+    function render() {
+      for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+          const i = x + y * WIDTH;
+          
+          if(y == HEIGHT - 1) {
+            cellsOut[i] = Math.random();
+          } else {
+            let mid = cellsIn[x + (y + 1) * WIDTH];
+            let sideSum =
+              cellsIn[mod(x - 1, WIDTH) + (y + 1) * WIDTH]
+              + cellsIn[(x + 1) % WIDTH + (y + 1) * WIDTH];
+            
+            if(y == HEIGHT - 2) {
+              sideSum /= 2;
+            } else {
+              sideSum += cellsIn[x + (y + 2) * WIDTH];
+              sideSum /= 3;
+            }
+            
+            cellsOut[i] = lerp(sideSum, mid, 0.75) - 1 / HEIGHT / 2;
+          }
+          const c = cellsOut[i];
+          const r = (c + 0.25) * 256;
+          const g = (c * c) * 256;
+          const b = c > 0.9 ? 255 : 127;
+          const a = c * c > 0.06125 ? 255 : 0;
+          
+          plot(x, y, r, g, b, a);
+        }
+      }
+      
+      if(cellsIn == cells1) {
+        cellsIn = cells2;
+        cellsOut = cells1;
+      } else {
+        cellsIn = cells1;
+        cellsOut = cells2;
+      }
+      
+    }
+    //30 fps
+    initialize(1000 / 30);
+  </script>
+</html>

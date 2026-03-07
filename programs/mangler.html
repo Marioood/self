@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        background-color: #101020;
+        color: white;
+      }
+      tr {
+        height: 16px;
+      }
+      td {
+        border: 1px solid #ffffff40;
+        min-width: 24px;
+        max-width: 24px;
+        overflow: hidden;
+        text-align: center;
+      }
+      .td-input {
+        border: 1px solid black;
+        border-bottom: none;
+        border-right: none;
+        min-width: 24px;
+        max-width: 24px;
+        overflow: hidden;
+        text-align: center;
+        color: inherit;
+        font: inherit;
+        text-shadow: inherit;
+      }
+      .td-ctrl {
+        letter-spacing: -2px;
+        color: #ffa02080;
+      }
+      table {
+        font-family: mono;
+        font-size: 16px;
+        border-collapse: collapse;
+        color: #ffa020;
+        display: inline-block;
+        text-shadow: 1px 0 black, 0 1px black, -1px 0 black, 0 -1px black, 2px 2px black;
+      }
+      .none {
+        color: #ffffff40;
+      }
+      canvas {
+        border: 1px #ffffff40 solid;
+        width: 128px;
+        image-rendering: pixelated;
+        display: inline-block;
+      }
+      ul {
+        font-size: 12px;
+      }
+      li {
+        height: 12px;
+        margin-left: -16px;
+      }
+      p {
+        font-size: 14px;
+        height: 0;
+      }
+      .info-container {
+        display: inline-block;
+      }
+      label {
+        text-align: left;
+      }
+      .input-wrong {
+        background-color: #ff8080;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="display"></canvas>
+    <div class="info-container">
+      <p>file header</p>
+      <ul>
+        <li>identifier: "BM"</li>
+        <li>file size: 123 bytes</li>
+        <li>reserved (1): 0</li>
+        <li>reserved (2): 0</li>
+        <li>image data offset: 123 bytes</li>
+      </ul>
+      <p>DIB header</p>
+      <ul>
+        <li>DIB header length: 123 bytes</li>
+        <li>width: 123 pixels</li>
+        <li>height: 123 pixels</li>
+        <li>color planes: 1</li>
+        <li>bits per pixel: 32</li>
+      </ul>
+    </div>
+    <br>
+    <span id="seg-input-label">LABEL GOES HERE!</span>
+    <input id="seg-input" data-seg="0">
+    <div>
+      <table id="hex-table"></table>
+      <table id="char-table"></table>
+    </div>
+    <script>
+      let bytes = [66,77,150,1,0,0,0,0,0,0,150,0,0,0,124,0,0,0,8,0,0,0,8,0,0,0,1,0,32,0,3,0,0,0,0,0,0,0,196,14,0,0,196,14,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,255,0,0,255,0,0,0,0,0,0,255,32,110,105,87,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,255,0,0,0,0,255,0,0,0,0,255,0,255,255,255,255,255,255,255,255,0,0,0,255,0,0,0,255,0,0,0,255,0,0,0,255,255,255,255,255,255,255,255,255,255,255,255,255,0,0,0,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0,0,0,255,255,255,255,255,0,0,0,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0,0,0,255,0,0,255,255,0,0,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,0,0,255,255,0,0,255,255,255,135,255,255,255,135,255,255,0,0,0,255,255,255,255,255,255,255,255,255,0,0,0,255,255,135,255,255,255,135,255,255,255,255,255,255,255,255,255,255,0,0,0,255,255,255,255,255,255,255,255,255,0,0,0,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,132,0,255,255,255,255,255,255,255,255,255,255,132,0,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255];
+  let byteIdx = 0;
+  //let bytes = []; for(let i = 0; i < 256; i++) { bytes.push(i);
+  let segs = [];
+  let segPos = 0;
+
+  const hexTable = document.getElementById("hex-table");
+  const charTable = document.getElementById("char-table");
+  const tableCols = 16;
+  const tableRows = Math.ceil(bytes.length / tableCols);
+
+  parseBMP();
+
+  function Segment(length, label, color, value) {
+    this.length = length;
+    this.label = label; //type
+    if(color == undefined) {
+      this.color = "#" + Math.floor(Math.random() * 0xFFFFFF).toString(16).padStart(6, '0') + "80";
+    } else {
+      this.color = color + "80";
+    }
+    this.value = value;
+    this.pos = segPos;
+    segPos += length;
+  }
+  let curSeg = 0;
+  let segi = 0;
+
+  for(let r = 0; r < tableRows; r++) {
+    const tr = document.createElement("tr");
+    for(let c = 0; c < tableCols; c++) {
+      const td = document.createElement("input");
+      const idx = c + r * tableCols;
+      let num;
+      const isEOF = idx >= bytes.length;
+      if(isEOF) {
+        num = "EOF";
+        td.classList.add("td-ctrl");
+        td.classList.add("none");
+      } else {
+        num = byte2Str(bytes[idx]);
+      }
+      if(segs[curSeg].value == undefined) {
+        td.title = segs[curSeg].label;
+      } else {
+        td.title = `${segs[curSeg].label}: ${segs[curSeg].value}`;
+      }
+      td.style.backgroundColor = segs[curSeg].color;
+      //length is length + 2... for some reason
+      td.setAttribute("data-seg", curSeg);
+      
+      if(segi > segs[curSeg].length - 2) {
+        segi = 0;
+        if(curSeg < segs.length - 1) curSeg++;
+      } else {
+        segi++;
+      }
+      td.classList.add("td-input");
+      //td.appendChild(document.createTextNode(num));
+      td.value = num;
+      td.id = "hex-td-" + idx;
+      td.setAttribute("data-idx", idx);
+      td.addEventListener("input", (e) => {
+        byte = parseInt(td.value, 16);
+        //invalid range, get outta here!!
+        if(byte > 0xFF || byte < 0) return;
+        if(byte != byte) byte = 0; //set NaN to 0
+        const idx = td.dataset.idx;
+        bytes[idx] = byte;
+        parseBMP();
+      });
+      td.onclick = (e) => {
+        const label = document.getElementById("seg-input-label");
+        const mySeg = segs[td.dataset.seg];
+        label.innerHTML = mySeg.label;
+        const input = document.getElementById("seg-input");
+        if(mySeg.value == undefined) {
+          input.value = "no-type";
+          input.disabled = true;
+        } else {
+          input.value = mySeg.value;
+          input.disabled = false;
+        }
+        input.dataset.seg = td.dataset.seg;
+      };
+      tr.appendChild(td);
+    }
+    hexTable.appendChild(tr);
+  }
+  const ctrlNamesASCII = ["NUL","SOH","STX","ETX","EOT","ENQ","ACK","BEL","BS","HT","LF","VT","FF","CR","SO","SI","DLE","DC1","DC2","DC3","DC4","NAK","SYN","ETB","CAN","EM","SUB","ESC","FS","GS","RS","US"];
+  const ctrlNamesUnicode = ["XXX","XXX","BPH","IND","NEL","SSA","ESA","HTS","HTJ","VTS","PLD","PLU","RI","SS2","SS3","DCS","PU1","PU2","STS","CCH","MW","SPA","EPA","SOS","XXX","SCI","CSI","ST","OSC","PM","APC","NBSP"];
+
+  for(let r = 0; r < tableRows; r++) {
+    const tr = document.createElement("tr");
+    for(let c = 0; c < tableCols; c++) {
+      const td = document.createElement("td");
+      const idx = c + r * tableCols;
+      let num;
+      
+      if(idx >= bytes.length) {
+        num = "EOF";
+        td.classList.add("td-ctrl");
+        td.classList.add("none");
+      } else {
+        let code = bytes[idx];//Math.floor(Math.random() * 256);
+        
+        if(code < 0x20) {
+          num = ctrlNamesASCII[code];
+          td.classList.add("td-ctrl");
+        } else if(code == 0x7F) {
+          num = "DEL";
+          //char:is_whitespace str:2int int:2str char:fuse(bytes[], endianness)
+          //char:is_ctrl('\n');
+          //char:2escape('\n', char:HEX);
+          td.classList.add("td-ctrl");
+        } else if(code > 0x7F && code < 0xA0) {
+          num = ctrlNamesUnicode[code - 0x80];
+          td.classList.add("td-ctrl");
+        } else {
+          num = String.fromCodePoint(code);
+        }
+      }
+      td.appendChild(document.createTextNode(num));
+      tr.appendChild(td);
+    }
+    charTable.appendChild(tr);
+  }
+  function parseBMP() {
+    byteIdx = 0;
+    const identifier = streamChar() + streamChar();
+    const fileSize = streamInt();
+    const reserved1 = streamShort();
+    const reserved2 = streamShort();
+    const dataOffset = streamInt();
+    //BEGIN DIB HEADER
+    const DIBLength = streamInt();
+    const imageWidth = streamInt();
+    const imageHeight = streamInt();
+    const colorPlanes = streamShort();
+    const bitsPerPixel = streamShort();
+    const compressionType = streamInt();
+    const imageSize = streamInt();
+    //pixels per meter, who the hell uses these?
+    const widthPPM = streamInt();
+    const heightPPM = streamInt();
+    const colorCount = streamInt();
+    const importantColorCount = streamInt();
+    segs = [];
+    segPos = 0;
+    segs.push(new Segment(2, "identifier", "#808080", identifier));
+    segs.push(new Segment(4, "file size", "#ffffff", fileSize));
+    segs.push(new Segment(2, "reserved (1)", "#000000", reserved1));
+    segs.push(new Segment(2, "reserved (2)", "#000000", reserved2));
+    segs.push(new Segment(4, "image data offset", "#ffff80", dataOffset));
+    segs.push(new Segment(4, "DIB header length", "#80ffff", DIBLength));
+    segs.push(new Segment(4, "width", "#ff0000", imageWidth));
+    segs.push(new Segment(4, "height", "#00ff00", imageHeight));
+    segs.push(new Segment(2, "color planes", "#ffff80", colorPlanes));
+    segs.push(new Segment(2, "bits per pixel", "#0000ff", bitsPerPixel));
+    segs.push(new Segment(4, "compression method", "#808080", compressionType));
+    segs.push(new Segment(4, "image size", "#ff80ff", imageSize));
+    segs.push(new Segment(4, "width (pixels per meter)", "#ff4040", widthPPM));
+    segs.push(new Segment(4, "height (pixels per meter)", "#40ff40", heightPPM));
+    segs.push(new Segment(4, "colors", "#8080ff", colorCount));
+    segs.push(new Segment(4, "important colors", "#80ffff", importantColorCount));
+    const skippedDIB = DIBLength - 40;
+    const dataPadding = dataOffset - (DIBLength + 14);
+    segs.push(new Segment(skippedDIB, "skipped DIB header (TODO: decode this)", "#008080"));
+    if(dataPadding > 0) segs.push(new Segment(dataPadding, "pixel data padding", "#000000"));
+    //TODO: padding
+    const colsMin = ["00", "20"];
+    const colsMax = ["ff", "ff", "80", "80"];
+    for(let y = 0; y < imageWidth; y++) {
+      for(let x = 0; x < imageWidth; x++) {
+        const colo = colsMin[(x + y) % colsMin.length];
+        const colc = colsMax[(x + y) % colsMax.length];
+        const label = `pixel (${x},${y})`
+        segs.push(new Segment(1, label, `#${colo}${colo}${colc}`));
+        segs.push(new Segment(1, label, `#${colo}${colc}${colo}`));
+        segs.push(new Segment(1, label, `#${colc}${colo}${colo}`));
+        segs.push(new Segment(1, label, `#${colo}${colo}${colo}`));
+      }
+    }
+    segs.push(new Segment(1, "end of file", "#000000"));
+    
+    let curSeg = 0;
+    let segi = 0;
+   
+    for(let r = 0; r < tableRows; r++) {
+      for(let c = 0; c < tableCols; c++) {
+        const idx = c + r * tableCols;
+        const td = document.getElementById("hex-td-" + idx);
+        if(td == null) {
+          //console.log(idx);
+          //fucking uhhh when we do this before making the baleble
+          break;
+        }
+        if(segs[curSeg].value == undefined) {
+          td.title = segs[curSeg].label;
+        } else {
+          td.title = `${segs[curSeg].label}: ${segs[curSeg].value}`;
+        }
+        td.style.backgroundColor = segs[curSeg].color;
+        //length is length + 2... for some reason
+        if(segi > segs[curSeg].length - 2) {
+          segi = 0;
+          if(curSeg < segs.length - 1) curSeg++;
+        } else {
+          segi++;
+        }
+      }
+    }
+    
+    const canvas = document.getElementById("display");
+    const ctx = canvas.getContext("2d");
+    canvas.width = imageWidth;
+    canvas.height = imageHeight;
+    const idata = ctx.getImageData(0, 0, imageWidth, imageHeight);
+    const pixels = idata.data;
+    
+    byteIdx = dataOffset;
+    const imageLength = imageWidth * imageHeight;
+    
+    for(let i = 0; i < imageLength; i++) {
+      const b = streamByte();
+      const g = streamByte();
+      const r = streamByte();
+      const a = streamByte();
+      const idx = (imageLength - i - 1) * 4; //flip image vertically
+      pixels[idx    ] = r;
+      pixels[idx + 1] = g;
+      pixels[idx + 2] = b;
+      pixels[idx + 3] = a;
+    }
+    ctx.putImageData(idata, 0, 0);
+  }
+  function streamByte() {
+    const byte = bytes[byteIdx];
+    byteIdx++;
+    return byte;
+  }
+  function streamInt() {
+    /*for(let i = 0; i < 4; i++) {
+      const newByte = streamByte();
+      num += newByte << (i * 8);
+    }*///1 * (2 ** bits) == 1 << bits
+    return streamByte() + streamByte() * 0x100 + streamByte() * 0x10000 + streamByte() * 0x1000000;
+  }
+  function streamShort() {
+    return streamByte() + streamByte() * 0x100;
+  }
+  function streamChar() {
+    return String.fromCodePoint(streamByte());
+  }
+  function putInt(num, idx) {
+    if(idx != undefined) byteIdx = idx;
+    bytes[byteIdx] = num & 0x000000FF;
+    byteIdx++;
+    bytes[byteIdx] = (num & 0x0000FF00) >> 8;
+    byteIdx++;
+    bytes[byteIdx] = (num & 0x00FF0000) >> 16;
+    byteIdx++;
+    bytes[byteIdx] = (num & 0xFF000000) >> 24;
+    byteIdx++;
+  }
+  function byte2Str(num) {
+    let str = num.toString(16);
+    if(str.length < 2) {
+      str = '0' + num;
+     }
+     return str;
+  }
+  const input = document.getElementById("seg-input")
+  input.addEventListener("input", (e) => {
+    const val = Number(input.value);
+    if(val != val) { //NaN check
+      input.classList.add("input-wrong");
+      return;
+    } else {
+      input.classList.remove("input-wrong");
+    }
+    putInt(val, segs[input.dataset.seg].pos);
+    segs[input.dataset.seg].value = val;
+    let pos = segs[input.dataset.seg].pos;
+    const td0 = document.getElementById("hex-td-" + pos);
+    td0.value = byte2Str(val & 0x000000FF);
+    pos++;
+    const td1 = document.getElementById("hex-td-" + pos)
+    td1.value = byte2Str((val & 0x0000FF00) >> 8);
+    pos++;
+    const td2 = document.getElementById("hex-td-" + pos)
+    td2.value = byte2Str((val & 0x00FF0000) >> 16);
+    pos++;
+    const td3 = document.getElementById("hex-td-" + pos)
+    td3.value = byte2Str((val & 0xFF000000) >> 24);
+    parseBMP();
+  });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <canvas id="render" style="width: 512px; height: 512px; image-rendering: pixelated"></canvas>
+    <p>A procedural... baby oil texture. Designed with the help of a friend (1). It was created as a joke to show him one of my passions.</p>
+  </body>
+  <script src="render-helper.js"></script>
+  <script>
+    const WIDTH = 64;
+    const HEIGHT = 64;
+    const LENGTH = WIDTH * HEIGHT;
+
+    const canvas = document.getElementById("render");
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    const ctx = canvas.getContext("2d");
+    const idata = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+    const pixels = idata.data;
+
+    let t = 0;
+
+    function initialize(delay) {
+      let handle = window.setInterval(
+        () => {
+          render();
+          t++;
+          ctx.putImageData(idata, 0, 0);
+        }, delay
+      );
+    }
+
+    ctx.putImageData(idata, 0, 0);
+
+    function plot(x, y, r, g, b, a) {
+      const i = (x + y * WIDTH) * 4;
+      pixels[i]   = r;
+      pixels[i+1] = g;
+      pixels[i+2] = b;
+      pixels[i+3] = a;
+    }
+    /******** V user stuff here V ********/
+
+    let noiseTable = noiseArray(LENGTH, 0, 360);
+    let rowOffs = noiseArray(LENGTH, 0, 360);
+    let rowScales = noiseArray(LENGTH, 8, 64);
+    let rowDimOffs = noiseArray(LENGTH, 0, 360);
+    
+    function sinWrong(theta) {
+      return Math.sin(theta * (Math.PI / 360));
+    }
+    function cosWrong(theta) {
+      return Math.cos(theta * (Math.PI / 360));
+    }
+
+    function render() {
+      for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+          const i = x + y * WIDTH;
+          
+          let bub = sinWrong(noiseTable[i] + t * 4);
+          let bubMask = sinWrong(x * sinWrong(y * 24) * 96 + t * 16);
+          bubMask += cosWrong(y * cosWrong(x * 24) * 96 + t * 16);
+          bubMask = scale(bubMask, -2, 2, 0, 1);
+          
+          bub = scale(bub, -1, 1, 0, 0.5);
+          bub *= bub;
+          bub *= 0.75;
+          bub *= bubMask;
+          let wave = sinWrong(rowOffs[y] + t * 8 + x * rowScales[y]);
+          wave = scale(wave, -1, 1, 0.75, 1);
+          let waveMask = sinWrong(rowDimOffs[y] + t * 9); 
+          waveMask = scale(waveMask, -1, 1, 0.75, 1);
+          wave *= waveMask;
+          
+          col = wave + bub;
+          let r = col * 223 + 32;
+          let g = col * 250;
+          let b = col * 180;
+          let a = 255;//140;
+          plot(x, y, r, g, b, a);
+          //use on baby villagers, make the diddy mob crouch on their beds
+          if(noiseTable[i] > 360) {
+            noiseTable[i] = rand(0, 360);
+          } else {
+            noiseTable[i] += rand(0, 2);
+          }
+        }
+        if(Math.random() < 0.1) {
+          rowOffs[y] += Math.random() * 2 - 1;
+        }
+        if(Math.random() < 0.1) {
+          rowScales[y] += Math.random() * 2 - 1;
+        }
+        if(Math.random() < 0.1) {
+          rowDimOffs[y] += Math.random() * 2 - 1;
+        }
+      }
+    }
+    //30 fps
+    initialize(1000 / 30);
+  </script>
+</html>
