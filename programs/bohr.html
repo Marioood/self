@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <canvas id="render" style="width: 768px; height: 768px; image-rendering: pixelated; background-color: black"></canvas>
+    <br><input type="number" min="1" max="118" value="2" id="proton-input" style="width: 760px"></input>
+    <p>Unrealistic, but the realistic version is fucking annoying and pisses me off.</p>
+  </body>
+  <script src="render-helper.js"></script>
+  <script>
+    const WIDTH = 256;
+    const HEIGHT = 256;
+    const LENGTH = WIDTH * HEIGHT;
+
+    const canvas = document.getElementById("render");
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    const ctx = canvas.getContext("2d");
+    const idata = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+    const pixels = idata.data;
+
+    let t = 0;
+
+    function initialize(delay) {
+      let handle = window.setInterval(
+        () => {
+          render();
+          t++;
+          ctx.putImageData(idata, 0, 0);
+        }, delay
+      );
+    }
+
+    ctx.putImageData(idata, 0, 0);
+
+    function plot(x, y, r, g, b, a) {
+      const i = (x + y * WIDTH) * 4;
+      pixels[i]   = r;
+      pixels[i+1] = g;
+      pixels[i+2] = b;
+      pixels[i+3] = a;
+    }
+    const getRed = (x, y) => pixels[(x + y * WIDTH) * 4];
+    const getGreen = (x, y) => pixels[(x + y * WIDTH) * 4+1];
+    const getBlue = (x, y) => pixels[(x + y * WIDTH) * 4+2];
+    /******** V user stuff here V ********/
+    //average apclassroom function
+    //returns an array energy levels containing the correct amount of electrons
+    //ex: getElectronShells(10) -> [2, 8]
+    //ex: getElectronShells(52) -> [2, 8, 18, 24]
+    //ex: getElectronShells(79) -> [ ]
+    
+    //TODO: inaccurate. should use those fucking uhhhh sublevels
+    const maxElectronsCache = [2, 8, 18, 32, 32, 18, 18, 8];
+    
+    function getElectronShells(es) {
+      const shells = [];
+      let level = 1;
+      //safety check cuz i'm pretty sure we haven't discovered elements with this many energy levels
+      while(level < maxElectronsCache.length) {
+        const maxElectrons = maxElectronsCache[level - 1];
+        if(es > maxElectrons) {
+          shells.push(maxElectrons);
+          es -= maxElectrons;
+        } else {
+          shells.push(es);
+          return shells;
+        }
+        level++;
+      }
+      return [];
+    }
+    
+    function drawParticle(x, y, radius, r, g, b) {
+      for(yi = -radius; yi <= radius; yi++) {
+        for(xi = -radius; xi <= radius; xi++) {
+          const dist = Math.sqrt(xi * xi + yi * yi);
+          if(dist <= radius + 0.5) {
+            const shadeX = xi + radius / 3;
+            const shadeY = yi + radius / 3;
+            const shadeDist = 1 - Math.sqrt(shadeX * shadeX + shadeY * shadeY) / radius / 1.5;
+            plot(mod(xi + x, WIDTH), mod(yi + y, HEIGHT), r * shadeDist, g * shadeDist, b * shadeDist, 255);
+          }
+        }
+      }
+      
+      plot(Math.floor(mod(x - radius / 3, WIDTH)), Math.floor(mod(y - radius / 3, HEIGHT)), 255, 255, 255, 255);
+    }
+    function drawRing(radius) {
+      const x = WIDTH / 2;
+      const y = HEIGHT / 2;
+      for(yi = -Math.floor(radius); yi <= radius; yi++) {
+        for(xi = -Math.floor(radius); xi <= radius; xi++) {
+          const dist = Math.sqrt(xi * xi + yi * yi);
+          if(dist <= radius + 0.5 && dist >= radius - 0.5) {
+            plot(mod(xi + x, WIDTH), mod(yi + y, HEIGHT), 0, 0, 0, 255);
+          }
+        }
+      }
+    }
+    function drawElectron(x, y) {
+      const radius = 2;
+      drawParticle(x, y, radius, 255, 255, 0);
+      
+      for(let xi = -radius + 1; xi < radius; xi++) {
+        plot(mod(xi + x, WIDTH), y, 0, 0, 0, 255);
+      }
+    }
+    function drawProton(x, y) {
+      const radius = 4;
+      drawParticle(x, y, radius, 255, 0, 0);
+      
+      for(let i = -radius + 2; i < radius - 1; i++) {
+        plot(mod(i + x, WIDTH), y, 0, 0, 0, 255);
+        plot(x, mod(i + y, WIDTH), 0, 0, 0, 255);
+      }
+    }
+    function drawNeutron(x, y) {
+      const radius = 4;
+      drawParticle(x, y, radius, 191, 191, 191);
+    }
+    
+    function drawElectronsAndRing(es, radius, spinMul) {
+      drawRing(radius);
+      const spacing = Math.PI * 2 / es;
+      
+      for(let e = 0; e < es; e++) {
+        const x = Math.sin(t * spinMul + spacing * e) * radius;
+        const y = Math.cos(t * spinMul + spacing * e) * radius;
+        drawElectron(Math.round(x + HEIGHT * 0.5), Math.round(y + HEIGHT * 0.5));
+      }
+    }
+    
+    const randTable = Array(256);
+    
+    for(let i = 0; i < 256; i++)
+      randTable[i] = Math.random();
+    
+    const protonInput = document.getElementById("proton-input");
+    let protons = Math.max(Math.min(protonInput.value, protonInput.max), protonInput.min);
+    let electronRings = getElectronShells(protons);
+    
+    protonInput.oninput = (e) => {
+      if(Number(protonInput.value) > protonInput.max) {
+        protonInput.value = protonInput.max;
+      }
+      if(Number(protonInput.value) < protonInput.min) {
+        protonInput.value = protonInput.min;
+      }
+      protons = protonInput.value;
+      electronRings = getElectronShells(protons);
+    };
+      
+    function render() {
+      for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+          const i = x + y * WIDTH;
+          plot(x, y, 63, 63, 63, 255);
+        }
+      }
+      
+      //const ex = Math.sin(t * Math.PI * 0.01) * 32;
+      //const ey = Math.cos(t * Math.PI * 0.01) * 32;
+      //drawRing(32);
+      //drawElectron(Math.round(ex + WIDTH * 0.5), Math.round(ey + WIDTH * 0.5));
+      //drawProton(WIDTH * 0.5 + 5 + Math.floor(Math.random() * 2), HEIGHT * 0.5 + 5 + Math.floor(Math.random() * 2));
+      //drawNeutron(WIDTH * 0.5 - 5 + Math.floor(Math.random() * 2), HEIGHT * 0.5 - 5 + Math.floor(Math.random() * 2));
+      
+      let radiusStart = protons * 0.5 + 4;
+      let radius = radiusStart;
+      
+      for(let p = 0; p < protons; p++) {
+        //const radiusSquared = (1 - ((radius / radiusStart) * (radius / radiusStart))) * radiusStart;
+        const pang = randTable[p % 256] * Math.PI * 2;
+        const px = Math.round(Math.sin(pang) * radius + WIDTH * 0.5 + Math.random() * 2);
+        const py = Math.round(Math.cos(pang) * radius + HEIGHT * 0.5 + Math.random() * 2);
+        const nang = randTable[Math.floor(randTable[Math.floor(p % 256)] * 256)] * Math.PI * 2;
+        const nx = Math.round(Math.cos(nang) * radius + WIDTH * 0.5 + Math.random() * 2);
+        const ny = Math.round(Math.sin(nang) * radius + HEIGHT * 0.5 + Math.random() * 2);
+        
+        drawNeutron(nx, ny);
+        drawProton(px, py);
+        
+        radius -= 0.5;
+      }
+      
+      radius = radiusStart + 12;
+      
+      for(let r = 0; r < electronRings.length; r++) {
+        const spinMul = r % 2 == 0 ? 0.025 : -0.025;
+        drawElectronsAndRing(electronRings[r], radius, spinMul / (r + 1) * Math.PI);
+        radius += 8;
+      }
+    }
+    //30 fps
+    initialize(1000 / 30);
+  </script>
+</html>

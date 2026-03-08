@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
   <body>
-    <canvas id="render" style="width: 256px; height: 256px; image-rendering: pixelated; background-color: black"></canvas>
+    <canvas id="render" style="width: 512px; height: 512px; image-rendering: pixelated; background-color: black"></canvas>
     <p>Perlin noise.</p>
+    <p id="render-time"></p>
   </body>
   <script src="render-helper.js"></script>
   <script>
-    const WIDTH = 64;
-    const HEIGHT = 64;
+    const WIDTH = 128;
+    const HEIGHT = 128;
     const LENGTH = WIDTH * HEIGHT;
 
     const canvas = document.getElementById("render");
@@ -22,7 +23,10 @@
     function initialize(delay) {
       let handle = window.setInterval(
         () => {
+          let renderTimeStart = Date.now();
           render();
+          const renderTime = Date.now() - renderTimeStart;
+          document.getElementById("render-time").innerText = renderTime;
           t++;
           ctx.putImageData(idata, 0, 0);
         }, delay
@@ -58,16 +62,6 @@
       return vec2(lerp(a.x, b.x, bias), lerp(a.y, b.y, bias));
     }
     
-    const GRID_SIZE = 8;
-    /*const DIRS_WIDTH = Math.floor(WIDTH / GRID_SIZE);
-    const DIRS_HEIGHT = Math.floor(HEIGHT / GRID_SIZE);
-    const DIRS_LENGTH = DIRS_WIDTH * Math.floor(HEIGHT / GRID_SIZE);
-    const dirs = Array(DIRS_LENGTH);
-    
-    for(let i = 0; i < dirs.length; i++) {
-      dirs[i] = vec2polar(1, Math.random() * Math.PI);
-    }*/
-    
     const dirTable = Array(256);
     
     for(let i = 0; i < dirTable.length; i++) {
@@ -80,48 +74,47 @@
       mulTable[i] = (Math.random() * 2 - 1) * 0.25;
     }
     
-    function getDir(x, y) {
-      /*const r = Math.floor(randFromTable(x + y * 69) * 4);
-      if(r == 0) {
-        return vec2(-1, -1);
-      } else if(r == 1) {
-        return vec2(-1, 1);
-      } else if(r == 2) {
-        return vec2(1, -1);
-      } else {
-        return vec2(1, 1);
-      }*/
+    function getAng(x, y) {
       const theta = dirTable[Math.abs(x + y * 69) % 256];
       const timeMul = mulTable[Math.abs(x + y * 69) % 64];
-      return vec2polar(1, theta + t * timeMul);
+      return theta + t * timeMul;
     }
     
     function perlin(x, y) {
-      //TODO: opimize to use less memory allocation
       const xN = x - Math.floor(x);
       const yN = y - Math.floor(y);
       const xNHi = x - Math.ceil(x);
       const yNHi = y - Math.ceil(y);
-      
-      const corner00 = vec2(xN, yN);
-      const corner10 = vec2(xNHi, yN);
-      const corner01 = vec2(xN, yNHi);
-      const corner11 = vec2(xNHi, yNHi);
       
       const xGridLo = Math.floor(x);
       const yGridLo = Math.floor(y);
       const xGridHi = Math.ceil(x);
       const yGridHi = Math.ceil(y);
       
-      const dot00 = dotProduct(corner00, getDir(xGridLo, yGridLo));
-      const dot10 = dotProduct(corner10, getDir(xGridHi, yGridLo));
-      const dot01 = dotProduct(corner01, getDir(xGridLo, yGridHi));
-      const dot11 = dotProduct(corner11, getDir(xGridHi, yGridHi));
+      const ang00 = getAng(xGridLo, yGridLo);
+      const ang10 = getAng(xGridHi, yGridLo);
+      const ang01 = getAng(xGridLo, yGridHi);
+      const ang11 = getAng(xGridHi, yGridHi);
       
-      const xBias = easeCos(xN);
-      const yBias = easeCos(yN);
+      const dot00 = xN * Math.sin(ang00) + yN * Math.cos(ang00);
+      const dot10 = xNHi * Math.sin(ang10) + yN * Math.cos(ang10);
+      const dot01 = xN * Math.sin(ang01) + yNHi * Math.cos(ang01);
+      const dot11 = xNHi * Math.sin(ang11) + yNHi * Math.cos(ang11);
+      
+      const xBias = smoothstep(xN);
+      const yBias = smoothstep(yN);
       
       return lerp(lerp(dot00, dot10, xBias), lerp(dot01, dot11, xBias), yBias);
+    }
+    
+    function perlinOctaves(x, y, octaves) {
+      let n = 0;
+      let scale = 1;
+      for(let o = 0; o < octaves; o++) {
+        n += perlin(x / scale, y / scale) * scale;
+        scale /= 2;
+      }
+      return n;
     }
     
     const offsets = Array(LENGTH);
@@ -129,27 +122,37 @@
     for(let i = 0; i < LENGTH; i++) {
       offsets[i] = Math.floor(Math.random() * 3) - 1;
     }
+    
+    const highlights = Array(LENGTH).fill(false);
+    
+    const stones = Array(LENGTH * 3);
+    
+    for(let y = 0; y < HEIGHT; y++) {
+      for(let x = 0; x < WIDTH; x++) {
+        const i = (x + y * WIDTH) * 3;
+        const grad = perlin(x / 5, y / 5);
+        const gradShifted = perlin((x - 1) / 5, (y - 1) / 5);
+        let col = Math.cos(((grad - gradShifted) + 0.5) * Math.PI * 3) / 4 + 0.75;
+        col += (Math.random() - 0.5) / 2;
+        const r = col * 255;
+        const g = col * col * 127;
+        const b = 0;
+        stones[i] = r;
+        stones[i+1] = g;
+        stones[i+2] = b;
+      }
+    }
 
     function render() {
       for(let yi = 0; yi < HEIGHT; yi++) {
         for(let xi = 0; xi < WIDTH; xi++) {
-          const grad = perlin(xi / GRID_SIZE, yi / GRID_SIZE);
-          const gradShifted = perlin((xi - 1) / GRID_SIZE, (yi - 1) / GRID_SIZE);
-          const col = (grad - gradShifted + 0.5) * 255;
-          const r = col * 0.25;
-          const g = col;
-          const b = col * 0.25 + 63;
-          /*if(grad - gradShifted > 0.25) {
-            //plot(xi, yi, 255, 255, 255, 255);
-            //TODO: move to separate loop and store in separate array
-            plot((xi + 1) % WIDTH, yi, 255, 0, 0, 255);
-            plot(mod(xi - 1, WIDTH), yi, 255, 0, 0, 255);
-            plot(xi, (yi + 1) % HEIGHT, 255, 0, 0, 255);
-            plot(xi, mod(yi - 1, HEIGHT), 255, 0, 0, 255);
-            
-          } else {*/
-            plot(xi, yi, r, g, b, 255);
-          //}
+          const grad = perlinOctaves(xi / 16, yi / 16, 2);
+          const gradShifted = perlinOctaves((xi - 1) / 16, (yi - 1) / 16, 2);
+          const col = ((grad - gradShifted) + 0.5);
+          const r = col * 127 + 7;
+          const g = col * col * 255;
+          const b = col * 182 + 127;
+          plot(xi, yi, r, g, b, 255);
         }
       }
       
@@ -165,15 +168,76 @@
           plot(mod(x + xOffs, WIDTH), y, oldR, oldG, oldB, 255);
         }
       }
+      
+      for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+          const baseI = (x + y * WIDTH) * 4;
+          const stonesI = (x + y * WIDTH) * 3;
+          const oldR = pixels[baseI];
+          const oldG = pixels[baseI+1];
+          const oldB = pixels[baseI+2];
+          const r = lerp(oldR, stones[stonesI], 0.15);
+          const g = lerp(oldG, stones[stonesI+1], 0.15);
+          const b = lerp(oldB, stones[stonesI+2], 0.15);
+          plot(x, y, r, g, b, 255);
+        }
+      }
+      
+      for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+          const i = x + y * WIDTH;
+          const oldR = pixels[i * 4];
+          const oldG = pixels[i * 4+1];
+          const oldB = pixels[i * 4+2];
+          if((oldR + oldG + oldB) / 3 > 147) {
+            plot(x, y, 255, 255, 255, 255);
+            highlights[i] = true;
+          }
+        }
+      }
 
-      for(let i = 0; i < LENGTH / 4; i++) {
-        //offsets[Math.floor(Math.random() * LENGTH)] = 0;
+      for(let i = 0; i < LENGTH / 8; i++) {
         offsets[Math.floor(Math.random() * LENGTH)] = Math.floor(Math.random() * 3) - 1;
         offsets[Math.floor(Math.random() * LENGTH)] += Math.random() > 0.5 ? -1 : 1;
       }
-  
+      
+      for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+          const i = x + y * WIDTH;
+          if(highlights[i]) {
+            highlights[i] = false;
+            const shineHorzRadius = 3 + (Math.floor(t / 16) % 2);
+            const shineVertRadius = 2 + (Math.floor(t / 16) % 2);
+            
+            for(let i = 1; i <= shineHorzRadius; i++) {
+              const iXNeg = (mod(x - i, WIDTH) + y * WIDTH) * 4;
+              const iXPos = ((x + i) % WIDTH + y * WIDTH) * 4;
+              const iYNeg = (x + mod(y - i, HEIGHT) * WIDTH) * 4;
+              const iYPos = (x + (y + i) % HEIGHT * WIDTH) * 4;
+              const a = (1 - (i / (shineHorzRadius + 1))) * 63;
+              const rXNeg = pixels[iXNeg] + a;
+              const gXNeg = pixels[iXNeg+1] + a;
+              const bXNeg = pixels[iXNeg+2] + a;
+              const rXPos = pixels[iXPos] + a;
+              const gXPos = pixels[iXPos+1] + a;
+              const bXPos = pixels[iXPos+2] + a;
+              const rYNeg = pixels[iYNeg] + a;
+              const gYNeg = pixels[iYNeg+1] + a;
+              const bYNeg = pixels[iYNeg+2] + a;
+              const rYPos = pixels[iYPos] + a;
+              const gYPos = pixels[iYPos+1] + a;
+              const bYPos = pixels[iYPos+2] + a;
+              plot((x + i) % WIDTH, y, rXPos, gXPos, bXPos, 255);
+              plot(mod(x - i, WIDTH), y, rXNeg, gXNeg, bXNeg, 255);
+              plot(x, (y + i) % HEIGHT, rYPos, gYPos, bYPos, 255);
+              plot(x, mod(y - i, HEIGHT), rYNeg, gYNeg, bYNeg, 255);
+            }
+          }
+        }
+      }
+      
     }
     //30 fps
-    initialize(1000 / 15);
+    initialize(1000 / 20);
   </script>
 </html>

@@ -45,3 +45,6 @@ function lerp(n1, n2, bias) {
 function easeCos(n) {
   return Math.cos(n * Math.PI + Math.PI) / 2 + 0.5;
 }
+function smoothstep(x) {
+  return (x * (6 * x - 15) + 10) * x * x * x;
+}
