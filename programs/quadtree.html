@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <canvas id="render" style="width: 768px; height: 768px; image-rendering: pixelated; background-color: black"></canvas>
+    <p>A <a href="https://en.wikipedia.org/wiki/Quadtree">quadtree</a> visualization. Use your mouse to change where the tree is branched!</p>
+  </body>
+  <script src="render-helper.js"></script>
+  <script>
+    const WIDTH = 256;
+    const HEIGHT = 256;
+    const LENGTH = WIDTH * HEIGHT;
+
+    const canvas = document.getElementById("render");
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    const ctx = canvas.getContext("2d");
+    const idata = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+    const pixels = idata.data;
+
+    let t = 0;
+
+    function initialize(delay) {
+      let handle = window.setInterval(
+        () => {
+          render();
+          t++;
+          ctx.putImageData(idata, 0, 0);
+        }, delay
+      );
+    }
+
+    ctx.putImageData(idata, 0, 0);
+
+    function plot(x, y, r, g, b, a) {
+      const i = (x + y * WIDTH) * 4;
+      pixels[i]   = r;
+      pixels[i+1] = g;
+      pixels[i+2] = b;
+      pixels[i+3] = a;
+    }
+    /******** V user stuff here V ********/
+    
+    class QuadNode {
+      //either a pointer to another QuadNode or some random value
+      n00 = null;
+      n10 = null;
+      n01 = null;
+      n11 = null;
+    }
+    
+    //const daTree = new QuadNode(new QuadNode(null, null, new QuadNode(null, null, null, null), null), null, null, new QuadNode(null, null, new QuadNode(null, null, null, null), null));
+      
+    //mouse will cut through daTree
+    let cursorX;
+    let cursorY;
+    
+    canvas.onmousemove = (e) => {
+      cursorX = Math.floor(e.offsetX / 3);
+      cursorY = Math.floor(e.offsetY / 3);
+    };
+      
+    function render() {
+      /*for(let y = 0; y < HEIGHT; y++) {
+        for(let x = 0; x < WIDTH; x++) {
+          const i = x + y * WIDTH;
+          plot(x, y, 63, 63, 63, 255);
+        }
+      }*/
+      let curNode = null;
+      let testX = 0;
+      let testY = 0;
+      let daTree = new QuadNode();
+      function checkBranch(branch, xStart, yStart, length) {
+        const halfLength = length / 2;
+        if(halfLength / 2 < 1) return;
+        
+        const roundedX = Math.floor((cursorX - xStart) / halfLength);
+        const roundedY = Math.floor((cursorY - yStart) / halfLength);
+        if(roundedX == 0) {
+          if(roundedY == 0) {
+            branch.n00 = new QuadNode();
+            checkBranch(branch.n00, xStart, yStart, halfLength);
+          } else {
+            branch.n01 = new QuadNode();
+            checkBranch(branch.n01, xStart, yStart + halfLength, halfLength);
+          }
+        } else {
+          if(roundedY == 0) {
+            branch.n10 = new QuadNode();
+            checkBranch(branch.n10, xStart + halfLength, yStart, halfLength);
+          } else {
+            branch.n11 = new QuadNode();
+            checkBranch(branch.n11, xStart + halfLength, yStart + halfLength, halfLength);
+          }
+        }
+      }
+      
+      function drawRect(xStart, yStart, width, height, r, g, b) {
+        for(let yi = 0; yi < height; yi++) {
+          for(let xi = 0; xi < width; xi++) {
+            let newR = r;
+            let newG = g;
+            let newB = b;
+            if(xi == width - 1 || yi == height - 1) {
+              newR -= 64;
+              newG -= 64;
+              newB -= 64;
+            }
+            if(xi == 0 || yi == 0) {
+              newR += 16;
+              newG += 16;
+              newB += 16;
+            }
+            if(xi == width - 2 || yi == height - 2) {
+              newR += 64;
+              newG += 64;
+              newB += 64;
+            }
+            plot(xi + xStart, yi + yStart, newR, newG, newB, 255);
+          }
+        }
+      }
+      
+      //TODO: red gradient based off of start points and length
+      function drawBranch(branch, xStart, yStart, length) {
+        const halfLength = length / 2;
+        if(branch.n00 == null) {
+          drawRect(xStart, yStart, halfLength, halfLength, xStart, yStart, 63);
+        } else {
+          drawBranch(branch.n00, xStart, yStart, length / 2);
+        }
+        if(branch.n10 == null) {
+          drawRect(xStart + halfLength, yStart, halfLength, halfLength, xStart + length, yStart, 63);
+        } else {
+          drawBranch(branch.n10, xStart + halfLength, yStart, length / 2);
+        }
+        if(branch.n01 == null) {
+          drawRect(xStart, yStart + halfLength, halfLength, halfLength, xStart, yStart + length, 63);
+        } else {
+          drawBranch(branch.n01, xStart, yStart + halfLength, length / 2);
+        }
+        if(branch.n11 == null) {
+          drawRect(xStart + halfLength, yStart + halfLength, halfLength, halfLength, xStart + length, yStart + length, 63);
+        } else {
+          drawBranch(branch.n11, xStart + halfLength, yStart + halfLength, length / 2);
+        }
+      }
+      checkBranch(daTree, 0, 0, WIDTH);
+      drawBranch(daTree, 0, 0, WIDTH);
+    }
+    //30 fps
+    initialize(1000 / 30);
+  </script>
+</html>

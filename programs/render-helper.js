@@ -48,3 +48,6 @@ function easeCos(n) {
 function smoothstep(x) {
   return (x * (6 * x - 15) + 10) * x * x * x;
 }
+function inAABB(px, py, bx, by, bw, bh) {
+  return px >= bx && py >= by && px <= bx + bw && py <= by + bh
+}
