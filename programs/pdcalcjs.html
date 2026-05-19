@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        background-color: black;
+        color: white;
+      }
+      canvas {
+        width: 512px;
+        height: 512px;
+        image-rendering: pixelated;
+      }
+    </style>
+  </head>
+  <body>
+    <table>
+      <tr>
+        <td><canvas id="render"></canvas></td>
+        <td><p id="dispInstr"></p></td>
+      <tr>
+    </table>
+  </body>
+  <script>
+    const WIDTH = 256;
+    const HEIGHT = 256;
+    const LENGTH = WIDTH * HEIGHT;
+
+    const canvas = document.getElementById("render");
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    const ctx = canvas.getContext("2d");
+    const idata = ctx.getImageData(0, 0, WIDTH, HEIGHT);
+    const pixels = idata.data;
+    
+    let t = 0;
+  
+    function Instr(instr, value) {
+      return {type: instr, value: value};
+    }
+    
+    const INSTR_PUSH_CONST = 0;
+    const INSTR_DEREF_CONST = 1;
+    const INSTR_DUPE = 2;
+    
+    const INSTR_ADD = 8;
+    const INSTR_SUB = 9;
+    const INSTR_MUL = 10;
+    const INSTR_DIV = 11;
+    const INSTR_POW = 12;
+    const INSTR_BIN_AND = 13;
+    const INSTR_BIN_OR = 14;
+    const INSTR_BIN_XOR = 15;
+    const INSTR_HYPOT_EUC = 16;
+    const INSTR_ATAN2 = 17;
+    const INSTR_MOD = 18;
+    
+    const INSTR_SIN = 32;
+    const INSTR_COS = 33;
+    const INSTR_SQRT = 34;
+    const INSTR_ROUND = 35;
+    
+    const theProgram = [
+      /*Instr(INSTR_DEREF_CONST, 0),
+      Instr(INSTR_DEREF_CONST, 1),
+      Instr(INSTR_BIN_XOR)*/
+    ];
+    
+    let stackElems = 0;
+    let maxIterations = 16;
+    let i = 0;
+    
+    while(stackElems > 1 || i < maxIterations) {
+      console.log("i", i, "elem", stackElems);
+      if(stackElems >= 2) {
+        console.log("^binary elem");
+        //op binary
+        //op unary
+        if(Math.random() > 0.5) {
+          theProgram.push(Instr(Math.floor(Math.random() * 4) + INSTR_SIN));
+        } else {
+          theProgram.push(Instr(Math.floor(Math.random() * 11) + INSTR_ADD));
+          stackElems--;
+        }
+      } else if(stackElems == 1) {
+        console.log("^unary elem");
+        //op unary
+        //op push
+        //op deref
+        //op dupe
+        const choice = Math.random();
+        if(choice > 0.75) {
+          theProgram.push(Instr(INSTR_PUSH_CONST, Math.random()));
+          stackElems++;
+        } else if(choice > 0.5) {
+          theProgram.push(Instr(INSTR_DEREF_CONST, Math.floor(Math.random() * 4)));
+          stackElems++;
+        } else if(choice > 0.25) {
+          theProgram.push(Instr(Math.floor(Math.random() * 4) + INSTR_SIN));
+        } else {
+          theProgram.push(Instr(INSTR_DUPE));
+          stackElems++;
+        }
+      } else if(stackElems == 0) {
+        console.log("^no elem");
+        //op push
+        //op deref
+        if(Math.random() > 0.5) {
+          const choice = Math.random();
+          if(choice > 0.5) {
+            theProgram.push(Instr(INSTR_PUSH_CONST, Math.random()));
+          } else {
+            theProgram.push(Instr(INSTR_PUSH_CONST, Math.random() * 11));
+          }
+          stackElems++;
+        } else {
+          theProgram.push(Instr(INSTR_DEREF_CONST, Math.floor(Math.random() * 4)));
+          stackElems++;
+        }
+      } else {
+        console.log("^unreachable", stackElems);
+      }
+      i++;
+    }
+          
+    function fragment(...args) {
+      const theMemory = args;
+      const theStack = [];
+      
+      for(let instrPtr = 0; instrPtr < theProgram.length; instrPtr++) {
+        const curInstr = theProgram[instrPtr];
+        switch(curInstr.type) {
+          case INSTR_DEREF_CONST: {
+            theStack.push(theMemory[curInstr.value]);
+            break;
+          }
+          case INSTR_PUSH_CONST: {
+            theStack.push(curInstr.value);
+            break;
+          }
+          case INSTR_DUPE: {
+            theStack.push(theStack[theStack.length - 1]);
+            break;
+          }
+          case INSTR_ADD: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(a + b);
+            break;
+          }
+          case INSTR_SUB: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(a - b);
+            break;
+          }
+          case INSTR_MUL: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(a * b);
+            break;
+          }
+          case INSTR_DIV: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(a / b);
+            break;
+          }
+          case INSTR_POW: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(a ** b);
+            break;
+          }
+          case INSTR_BIN_AND: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(((a * 255) & (b * 255)) / 255);
+            break;
+          }
+          case INSTR_BIN_OR: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(((a * 255) | (b * 255)) / 255);
+            break;
+          }
+          case INSTR_BIN_XOR: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(((a * 255) ^ (b * 255)) / 255);
+            break;
+          }
+          case INSTR_HYPOT_EUC: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(Math.hypot(a, b));
+            break;
+          }
+          case INSTR_ATAN2: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(Math.atan2(a, b));
+            break;
+          }
+          case INSTR_MOD: {
+            const b = theStack.pop();
+            const a = theStack.pop();
+            theStack.push(Math.abs(a % b));
+            break;
+          }
+          case INSTR_SIN: {
+            const theta = theStack.pop();
+            theStack.push(Math.sin(theta));
+            break;
+          }
+          case INSTR_COS: {
+            const theta = theStack.pop();
+            theStack.push(Math.cos(theta));
+            break;
+          }
+          case INSTR_SQRT: {
+            const theta = theStack.pop();
+            theStack.push(Math.sqrt(theta));
+            break;
+          }
+          case INSTR_ROUND: {
+            const theta = theStack.pop();
+            theStack.push(Math.round(theta));
+            break;
+          }
+        }
+      }
+      return theStack[0];
+    }
+    
+    function render() {
+      for(let x = 0; x < WIDTH; x++) {
+        for(let y = 0; y < HEIGHT; y++) {
+          const i = (x + y * WIDTH) * 4;
+          const col = fragment(x / (WIDTH - 1), y / (HEIGHT - 1), Math.random(), t);
+          pixels[i] = col * 255;
+          pixels[i + 1] = col * 63;
+          pixels[i + 2] = col * 127;
+          pixels[i + 3] = 255;
+        }
+      }
+    }
+    
+    let handle = window.setInterval(
+      () => {
+        render();
+        t += 0.25;
+        ctx.putImageData(idata, 0, 0);
+      }, 1000 / 4 //10 fps
+    );
+    
+    let instrText = "";
+    
+    for(let i = 0; i < theProgram.length; i++) {
+      const curInstr = theProgram[i];
+      instrText += `${i}. `;
+      switch(curInstr.type) {
+        case INSTR_DEREF_CONST:
+          instrText += `deref ${curInstr.value}, then push`;
+          break;
+        case INSTR_PUSH_CONST:
+          instrText += `push ${curInstr.value}`;
+          break;
+        case INSTR_DUPE:
+          instrText += "dupe";
+          break;
+        case INSTR_ADD:
+          instrText += "add";
+          break;
+        case INSTR_SUB:
+          instrText += "sub";
+          break;
+        case INSTR_MUL:
+          instrText += "mul";
+          break;
+        case INSTR_DIV:
+          instrText += "div";
+          break;
+        case INSTR_POW:
+          instrText += "pow";
+          break;
+        case INSTR_BIN_AND:
+          instrText += "bin AND";
+          break;
+        case INSTR_BIN_OR:
+          instrText += "bin OR";
+          break;
+        case INSTR_BIN_XOR:
+          instrText += "bin XOR";
+          break;
+        case INSTR_HYPOT_EUC:
+          instrText += "euclidean hypot";
+          break;
+        case INSTR_ATAN2:
+          instrText += "atan2";
+          break;
+        case INSTR_MOD:
+          instrText += "mod";
+          break;
+        case INSTR_SIN:
+          instrText += "sin";
+          break;
+        case INSTR_COS:
+          instrText += "cos";
+          break;
+        case INSTR_SQRT:
+          instrText += "sqrt";
+          break;
+        case INSTR_ROUND:
+          instrText += "round";
+          break;
+        default:
+          instrText += "?????";
+          break;
+      }
+      instrText += "\n";
+    }
+    dispInstr.innerText = instrText;
+  </script>
+</html>

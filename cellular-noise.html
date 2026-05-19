@@ -1,0 +1,45 @@
+
+
+
+
+
+Cellular Noise With Cellular Automata
+
+Start with a grid of empty cells. Replace some cells with living cells that have a unique "species".
+
+Loop over the grid. If the current cell is living, leave it there.
+
+
+
+If the current cell is empty, check its neighbors in a small diamond shape (SHOW SHAPE).
+If the current cell is empty, check its neighbors in a large diamond shape (SHOW SHAPE).
+
+
+
+
+
+
+ X
+X+X
+ X
+   X
+  XXX
+ XX+XX
+  XXX
+   X
+   
+   
+a^b_|_c
+0 0 | 0
+0 1 | 1
+1 0 | 1
+1 1 | 0
+   
+a&b_|_c
+0 0 | 0
+0 1 | 0
+1 0 | 0
+1 1 | 1
+
+a^b_|_c
+0 0 | 0

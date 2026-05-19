@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      img {
+        border: 1px black solid;
+        image-rendering: pixelated;
+      }
+      .func {
+        margin-left: 32px;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="width: 75vw; margin-left: auto; margin-right: auto">
+      <h2>Basic Sierpinski Carpet</h2>
+      <img src="img/blog/sierpinski-carpet.png" style="width: 486px; height: 486px"></img>
+      <br>
+      The <a href="https://en.wikipedia.org/wiki/Sierpi%C5%84ski_carpet">Sierpinski Carpet</a> is a fractal formed by taking the center out of a square a bunch of times.
+      <h2>Bitwise Sierpinski Carpet</h2>
+      <img src="img/blog/bitwise-sierpinski.png" style="width: 486px; height: 486px"></img>
+
+      NOTE: I did not discover this. I first learned about this approximation of the Sierpinski Carpet from a really cool website called icefractal.com. Specifically, from the <a href=https://icefractal.com/graph3d/explore.php>3D Explorer</a> on there.
+      
+      The rest of these fractals I have discovered, I just got inspired by this to make the later ones.
+
+      Integer division
+      all of these compute one iteration and then combine that with the previous ones
+      <br>
+      <span>f(x, y) =</span>
+      <br>
+      <div class="func">
+        <span>(((x % 3) &amp; 1) &amp; ((y % 3) &amp; 1))</span>
+        <br>
+        <span>+ (((x / 3 % 3) &amp; 1) &amp; (y / 3 % 3) &amp; 1))</span>
+        <br>
+        <span>+ (((x / 9 % 3) &amp; 1) &amp; (y / 9 % 3) &amp; 1))</span>
+        <br>
+        <span>+ (((x / 27 % 3) &amp; 1) &amp; (y / 27 % 3) &amp; 1))</span>
+        <br>
+        <span>...</span>
+      </div>
+      
+      <br>
+      <span>+ (((x / 3<sup>i</sup> % 3) &amp; 1) &amp; (y / 3<sup>i</sup> % 3) &amp; 1))</span>
+      
+      To normalize the result, divide the output by the number of iterations.
+      Something something... bitwise OR will just get you the Sierpinski Carpet without any of the extra details.
+
+      <h2>Sierpinski Wave</h2>
+
+      <h2>Chebyshev-Sierpinski Pyramids</h2>
+      <img src="img/blog/chebyshev-sierpinski-1.png" style="width: 486px; height: 486px"></img>
+      <img src="img/blog/chebyshev-sierpinski-2.png" style="width: 486px; height: 486px"></img>
+
+      <p>The rightside image has been inverted so that it's easier to make out fine details.</p>
+      <br>
+      <span>f(x, y) =</span>
+      <br>
+      <div class="func">
+      <span>max(</span>
+      <div class="func">
+        <span>min(if x % 3 > 1 then 3 - x % 3 - 1 else x % 3, if y % 3 > 1 then 3 - y % 3 - 1 else y % 3),</span>
+        <br>
+        <span>min(if x % 9 > 4 then 9 - x % 9 - 3 else x % 9 - 2, if y % 9 > 4 then 9 - y % 9 - 3 else y % 9 - 2),</span>
+        <br>
+        <span>min(if x % 27 > 13 then 27 - x % 27 - 9 else x % 27 - 8, if y % 27 > 13 then 27 - y % 27 - 9 else y % 27 - 8),</span>
+        <br>
+        <span>min(if x % 81 > 40 then 81 - x % 81 - 27 else x % 81 - 26, if y % 81 > 40 then 81 - y % 81 - 27 else y % 81 - 26),</span>
+        <br>
+        <span>...</span>
+        <br>
+      </div>
+      <span>)</span>
+      </div>
+      I tried use abs() for this instead of if-then-else, but it didn't work (tips were 2 pixels wide instead of 1). There's probably a simpler way to implement this that I haven't discovered yet.
+      
+      <p>Let i = the current iteration, let n = 3<sup>i</sup></p>
+      
+      <span>f(x, y) =</span>
+      <br>
+      <div class="func">
+        <span>min(if x % n > n / 2 then n - x % n - 3<sup>i-1</sup> else x % n - 3<sup>i-1</sup> + 1, if y % n > n / 2 then n - y % n - 3<sup>i-1</sup> else y % n - 3<sup>i-1</sup> + 1)</span>
+      </div>
+
+      <img src="img/blog/mc-graph-1.png" style="height: 486px"></img>
+      <img src="img/blog/mc-graph-2.png" style="height: 486px"></img>
+      <p>I don't know of any 3D graphing software (other than the stuff on Ice Fractal) and I didn't think to use Blender, so here's a graph of this fractal in Minecraft. The brightness of the pictures corresponds to height of each block.</p>
+      <h2>Manhattan-Sierpinski Pyramids</h2>
+
+      <h2>Euclid-Sierpinski Cones</h2>
+    </div>
+  </body>
+</html>
