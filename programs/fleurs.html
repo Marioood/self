@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <canvas id="render" style="image-rendering: pixelated; background-color: white"></canvas>
+    <p>Randomly generated flowers. More to come.</p>
+  </body>
+  <script src="render-helper.js"></script>
+  <script>
+    const WIDTH = 512;
+    const HEIGHT = 512;
+    const LENGTH = WIDTH * HEIGHT;
+
+    const canvas = document.getElementById("render");
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    const ctx = canvas.getContext("2d");
+
+    let t = 0;
+
+    function initialize(delay) {
+      let handle = window.setInterval(
+        () => {
+          render();
+          t++;
+        }, delay
+      );
+    }
+
+    /******** V user stuff here V ********/
+
+    function triPath(xPivot, yPivot, radius, angle) {
+      const trang = Math.PI * 2 / 3;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * radius + xPivot, Math.sin(angle) * radius + yPivot);
+      ctx.lineTo(Math.cos(trang + angle) * radius + xPivot, Math.sin(trang + angle) * radius + yPivot);
+      ctx.lineTo(Math.cos(trang * 2 + angle) * radius + xPivot, Math.sin(trang * 2 + angle) * radius + yPivot);
+      ctx.closePath();
+    }
+    
+    function randAng() {
+      return Math.random() * Math.PI * 2;
+    }
+    
+    function randRange(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+    
+    function cornflower(data) {
+      const headX = data.headX;
+      const headY = data.headY;
+      const baseX = data.baseX;
+      const baseY = data.baseY;
+      
+      ctx.strokeStyle = "#2F890F";
+      ctx.lineWidth = 12;
+      ctx.beginPath();
+      ctx.moveTo(headX, headY + 16);
+      ctx.lineTo(baseX, baseY);
+      ctx.stroke();
+      
+      ctx.fillStyle = "#1734D8";
+      for(let i = -2; i <= 2; i++) {
+        triPath(headX + i * 32, headY + randRange(-16, 16), randRange(24, 40), randAng());
+        ctx.fill();
+      }
+      
+      ctx.fillStyle = "#2F890F";
+      ctx.beginPath();
+      ctx.ellipse(headX, headY + 24, 16, 24, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.fillStyle = "#702ECC";
+      let purpleCount = Math.floor(randRange(1, 4));
+      for(let i = 0; i < purpleCount; i++) {
+        triPath(headX + randRange(-12, 12) * purpleCount, headY - randRange(24, 48), randRange(16, 32), Math.random() * Math.PI / 0.75 - Math.PI / 1.5 + Math.PI);
+        ctx.fill();
+      }
+      
+      ctx.fillStyle = "#455CF4";
+      for(let i = -4; i <= 4; i++) {
+        triPath(headX + i * 20, headY + randRange(-24, 24), randRange(16, 32), randAng());
+        ctx.fill();
+      }
+    }
+    
+    function vase(data) {
+      ctx.beginPath();
+      const halfWidth = data.width / 2;
+      const quartWidth = data.width / 4;
+      const halfHeight = data.height / 2;
+      ctx.moveTo(data.baseX + quartWidth, data.baseY - data.height);
+      
+      ctx.bezierCurveTo(data.baseX + quartWidth, data.baseY - data.height * 0.75, data.baseX, data.baseY - data.height * 0.75, data.baseX + quartWidth, data.baseY - halfHeight);
+      ctx.bezierCurveTo(data.baseX + halfWidth, data.baseY - data.height * 0.25, data.baseX + halfWidth, data.baseY - data.height * 0.25, data.baseX + data.width / 8, data.baseY);
+      
+      ctx.lineTo(data.baseX - data.width / 8, data.baseY);
+      
+      ctx.bezierCurveTo(data.baseX - halfWidth, data.baseY - data.height * 0.25, data.baseX - halfWidth, data.baseY - data.height * 0.25, data.baseX - quartWidth, data.baseY - halfHeight);
+      ctx.bezierCurveTo(data.baseX, data.baseY - data.height * 0.75, data.baseX - quartWidth, data.baseY - data.height * 0.75, data.baseX - quartWidth, data.baseY - data.height);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function render() {
+    //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setTransform
+    //randomly generated still life? or scrolling flower pots
+      ctx.fillStyle = "#F2E1CD";
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      
+      cornflower({
+        headX: WIDTH / 2 + randRange(-32, 32),
+        headY: HEIGHT / 2 - 144 + randRange(-32, 32),
+        baseX: WIDTH / 2,
+        baseY: HEIGHT / 2 + 144
+      });
+      const vaseCols = ["#C66D0B", "#FFFCFC", "#A989C4", "#A98978", "#E5A764", "#4FB9E2"];
+      ctx.fillStyle = vaseCols[Math.floor(Math.random() * vaseCols.length)];
+      if(Math.random() > 0.5) {
+        vase({baseX: WIDTH / 2, baseY: HEIGHT, width: 128 + randRange(-64, 64), height: 160 + randRange(-32, 32)});
+      } else {
+        const width = 64 + randRange(-32, 32);
+        const height = 160 + randRange(-32, 32);
+        ctx.fillRect(WIDTH / 2 - width / 2, HEIGHT - height, width, height);
+      }
+    }
+    render()
+    //30 fps
+    initialize(1000 / 0.5);
+  </script>
+</html>
